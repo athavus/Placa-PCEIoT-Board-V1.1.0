@@ -1,12 +1,17 @@
 # Display OLED
 
-## Atividade: Configurando e Usando o Display OLED da BitDogLab com Linguagem C
+<p align="center">
+  <img src="images/VirtusCC.png" alt="Virtus">
+</p>
 
-A seguir, apresentaremos um passo a passo para configurar e programar o Display OLED da BitDogLab utilizando a linguagem C. Vamos criar um programa que escreve uma mensagem no display, explorando as funções básicas de inicialização, configuração e manipulação de texto.
+
+## Atividade: Configurando e Usando o Display OLED da Placa-PCEIoT-Board-V1.1.0 com Linguagem C
+
+A seguir, apresentaremos um passo a passo para configurar e programar o Display OLED da Placa-PCEIoT-Board-V1.1.0 utilizando a linguagem C. Vamos criar um programa que escreve uma mensagem no display, explorando as funções básicas de inicialização, configuração e manipulação de texto.
 
 ### Objetivo:
 
-Desenvolver um programa que configure o Display OLED da BitDogLab e exiba uma mensagem personalizada. O programa deve inicializar a comunicação com o display, configurar os parâmetros de operação e atualizar a tela com a mensagem desejada.
+Desenvolver um programa que configure o Display OLED da Placa-PCEIoT-Board-V1.1.0 e exiba uma mensagem personalizada. O programa deve inicializar a comunicação com o display, configurar os parâmetros de operação e atualizar a tela com a mensagem desejada.
 
 ### Desenvolvimento:
 
@@ -14,21 +19,17 @@ Desenvolver um programa que configure o Display OLED da BitDogLab e exiba uma me
 
 Antes de iniciar a programação, certifique-se de que o ambiente de desenvolvimento está configurado:
 
-- Conecte a BitDogLab ao computador utilizando um cabo USB.
-- Abra o VS Code e carregue o projeto com a estrutura de pastas para compilar e executar código em C na BitDogLab.
+- Conecte a Placa-PCEIoT-Board-V1.1.0 ao computador utilizando um cabo USB.
+- Abra o VS Code e carregue o projeto com a estrutura de pastas para compilar e executar código em C na Placa-PCEIoT-Board-V1.1.0.
 - Verifique se as bibliotecas necessárias estão instaladas:
-  - [ssd1306.h](https://github.com/BitDogLab/BitDogLab-C/blob/main/display_oled/inc/ssd1306.h) para reconhecer as funções do código C. OBS: Esta biblioteca está disponível no link ativo.
-  - [ssd1306 font.h](https://github.com/BitDogLab/BitDogLab-C/blob/main/display_oled/inc/ssd1306_font.h) para obter os desenhos no display para cada caractere singular. Disponível no link ativo.
-  - [ssd1306_i2c.h](https://github.com/BitDogLab/BitDogLab-C/blob/main/display_oled/inc/ssd1306_i2c.h) para controlar o Display OLED. Disponível no link ativo.
-  - [ssd1306_i2c.c](https://github.com/BitDogLab/BitDogLab-C/blob/main/display_oled/inc/ssd1306_i2c.c) para declarar as funções ativas do código C. Disponível no link ativo.
   - Certifique-se de incluir os arquivos ssd1306.h, ssd1306_font.h, ssd1306_i2c.h e ssd1306_i2c.c numa pasta separada (de nome “inc”) dentro do projeto.
   - Drivers para comunicação I2C.
 
 **Passo 2:** Entendimento da Configuração do Hardware
 
-- O Display OLED está conectado ao barramento I2C da BitDogLab através dos seguintes pinos:
-  - SDA: GPIO14
-  - SCL: GPIO15
+- O Display OLED está conectado ao barramento I2C da Placa-PCEIoT-Board-V1.1.0 através dos seguintes pinos:
+  - SDA: GPIO6
+  - SCL: GPIO7
 - O endereço do Display OLED é 0x3C.
 
 **Passo 3:** Escrevendo o Código
@@ -44,24 +45,109 @@ Antes de iniciar a programação, certifique-se de que o ambiente de desenvolvim
 #include "pico/binary_info.h"
 #include "inc/ssd1306.h"
 #include "hardware/i2c.h"
+#include "hardware/spi.h"
 
-const uint I2C_SDA = 14;
-const uint I2C_SCL = 15;
+
+const uint I2C_SDA = 6;
+const uint I2C_SCL = 7;
+
+// SPI Defines
+// We are going to use SPI 0, and allocate it to the following GPIO pins
+// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
+// SPI defines - CORRIGIDO para sua placa
+#define SPI_PORT spi0
+#define PIN_MISO 16 // GP16
+#define PIN_CS 17   // GP17
+#define PIN_SCK 18  // GP18
+#define PIN_MOSI 19 // GP19
+
+// I2C defines
+// This example will use I2C0 on GPIO8 (SDA) and GPIO9 (SCL) running at 400KHz.
+// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
+#define I2C_PORT i2c0
+#define I2C_SDA 4
+#define I2C_SCL 5
+
+// Use pins 4 and 5 for UART1
+// Pins can be changed, see the GPIO function select table in the datasheet for information on GPIO assignments
+// UART defines - MUDEI PARA OUTROS PINOS
+#define UART_ID uart1
+#define BAUD_RATE 115200
+#define UART_TX_PIN 8 // GP8 (era GP4)
+#define UART_RX_PIN 9 // GP9 (era GP5)
 
 int main()
 {
-    stdio_init_all();   // Inicializa os tipos stdio padrão presentes ligados ao binário
+    stdio_init_all();
 
-    // Inicialização do i2c
-    i2c_init(i2c1, ssd1306_i2c_clock * 1000);
+    // SPI initialisation. This example will use SPI at 1MHz.
+    spi_init(SPI_PORT, 1000 * 1000);
+    gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
+    gpio_set_function(PIN_CS, GPIO_FUNC_SIO);
+    gpio_set_function(PIN_SCK, GPIO_FUNC_SPI);
+    gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
+
+    // Chip select is active-low, so we'll initialise it to a driven-high state
+    gpio_set_dir(PIN_CS, GPIO_OUT);
+    gpio_put(PIN_CS, 1);
+    // For more examples of SPI use see https://github.com/raspberrypi/pico-examples/tree/master/spi
+
+    // I2C Initialisation. Using it at 400Khz.
+    i2c_init(I2C_PORT, 400 * 1000);
+
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
     gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_SDA);
     gpio_pull_up(I2C_SCL);
+    // For more examples of I2C use see https://github.com/raspberrypi/pico-examples/tree/master/i2c
+
+    // Set up our UART
+    uart_init(UART_ID, BAUD_RATE);
+    // Set the TX and RX pins by using the function select on the GPIO
+    // Set datasheet for more information on function select
+    gpio_set_function(UART_TX_PIN, GPIO_FUNC_UART);
+    gpio_set_function(UART_RX_PIN, GPIO_FUNC_UART);
+
+    // Use some the various UART functions to send out data
+    // In a default system, printf will also output via the default UART
+
+    // Send out a string, with CR/LF conversions
+    uart_puts(UART_ID, " Hello, UART!\n");
+
+    //Daqui para baixo já estava..
+
+    stdio_init_all();   // Inicializa os tipos stdio padrão presentes ligados ao binário
+    sleep_ms(5000);
+    // Inicialização do i2c
+    i2c_init(i2c0, ssd1306_i2c_clock * 1000);
+    gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
+    gpio_set_function(I2C_SCL, GPIO_FUNC_I2C);
+    gpio_pull_up(I2C_SDA);
+    gpio_pull_up(I2C_SCL);
+    printf("Testando 1 \n"); 
 
     // Processo de inicialização completo do OLED SSD1306
     ssd1306_init();
+    printf("Testando 2 \n"); 
+    
+     // Preparar área de renderização para o display completo
+    struct render_area full_screen_area = {
+        start_column : 0,
+        end_column : ssd1306_width - 1,
+        start_page : 0,
+        end_page : ssd1306_n_pages - 1
+    };
+    calculate_render_area_buffer_length(&full_screen_area);
 
+    // Preenche o buffer com 0xFF para acender TODOS os pixels
+    uint8_t test_ssd_buffer[ssd1306_buffer_length];
+    memset(test_ssd_buffer, 0x7F, ssd1306_buffer_length); // Preenche com branco (pixels acesos)
+
+    printf("Testando: Tentando acender todos os pixels...\n");
+    render_on_display(test_ssd_buffer, &full_screen_area);
+    sleep_ms(3000); // Espera 3 segundos para você ver se o display acende
+
+    
     // Preparar área de renderização para o display (ssd1306_width pixels por ssd1306_n_pages páginas)
     struct render_area frame_area = {
         start_column : 0,
@@ -71,46 +157,10 @@ int main()
     };
 
     calculate_render_area_buffer_length(&frame_area);
-
-    // zera o display inteiro
-    uint8_t ssd[ssd1306_buffer_length];
-    memset(ssd, 0, ssd1306_buffer_length);
-    render_on_display(ssd, &frame_area);
-
-restart:
-```
-
-- Exibição de Mensagem no Display – Crie uma função para escrever texto no Display OLED (no arquivo ssd1306_i2c.c) e chame-a no código principal:
-
-```c
-// Desenha uma string, chamando a função de desenhar caractere várias vezes
-
-void ssd1306_draw_string(uint8_t *ssd, int16_t x, int16_t y, char *string) {
-    if (x > ssd1306_width - 8 || y > ssd1306_height - 8) {
-        return;
-    }
-
-    while (*string) {
-        ssd1306_draw_char(ssd, x, y, *string++);
-        x += 8;
-    }
-}
-```
-
-```c
-char *text[] = {
-        "  Bem-vindos!   ",
-        "  Embarcatech   "};
-
-    int y = 0;
-    for (uint i = 0; i < count_of(text); i++)
-    {
-        ssd1306_draw_string(ssd, 5, y, text[i]);
-        y += 8;
-    }
-    render_on_display(ssd, &frame_area);
+    printf("Testando 3 \n"); 
 
     while(true) {
+        printf("Testando\n"); 
         sleep_ms(1000);
     }
 
@@ -118,12 +168,10 @@ char *text[] = {
 }
 ```
 
-O código completo pode ser acessado [neste link](https://github.com/BitDogLab/BitDogLab-C/blob/main/display_oled/display_oled.c).
-
 **Passo 4:** Compilação e Execução
 
 - Compile o código no VS Code.
-- Carregue o programa na BitDogLab.
+- Carregue o programa na Placa-PCEIoT-Board-V1.1.0.
 - Observe a mensagem "Bem-vindos!" e "Embarcatech" no Display OLED.
 
 ### Exploração Adicional:
@@ -136,9 +184,9 @@ O código completo pode ser acessado [neste link](https://github.com/BitDogLab/B
 
 Sempre chame a função render_on_display após modificar o buffer do display para garantir que as alterações sejam exibidas.
 
-## Atividade: Desenhando Linhas no Display OLED da BitDogLab com o Algoritmo de Bresenham
+## Atividade: Desenhando Linhas no Display OLED da Placa-PCEIoT-Board-V1.1.0 com o Algoritmo de Bresenham
 
-Nesta atividade, exploraremos como desenhar linhas no Display OLED da BitDogLab utilizando a linguagem C. Para isso, aplicaremos o algoritmo de Bresenham, amplamente usado em sistemas gráficos por sua eficiência no cálculo de pontos de uma linha reta.
+Nesta atividade, exploraremos como desenhar linhas no Display OLED da Placa-PCEIoT-Board-V1.1.0 utilizando a linguagem C. Para isso, aplicaremos o algoritmo de Bresenham, amplamente usado em sistemas gráficos por sua eficiência no cálculo de pontos de uma linha reta.
 
 ### Objetivo:
 
@@ -210,8 +258,8 @@ Este programa utiliza a função de Bresenham para desenhar uma linha no display
 #include "inc/ssd1306.h"
 #include "hardware/i2c.h"
 
-const uint I2C_SDA = 14;
-const uint I2C_SCL = 15;
+const uint I2C_SDA = 6;
+const uint I2C_SCL = 7;
 
 int main()
 {
@@ -283,9 +331,9 @@ restart:
 
 Lembre-se de sempre chamar a função render_on_display após modificar o buffer para que as alterações sejam exibidas no display.
 
-## Atividade: Exibindo Bitmaps no Display OLED da BitDogLab
+## Atividade: Exibindo Bitmaps no Display OLED da Placa-PCEIoT-Board-V1.1.0
 
-Nesta atividade, vamos aprender a exibir uma imagem monocromática no Display OLED presente na BitDogLab. As imagens serão importadas como bitmaps no formato 128x64, adequado para a resolução do display. Essa atividade é uma excelente oportunidade para entender como gráficos são manipulados em dispositivos embarcados.
+Nesta atividade, vamos aprender a exibir uma imagem monocromática no Display OLED presente na Placa-PCEIoT-Board-V1.1.0. As imagens serão importadas como bitmaps no formato 128x64, adequado para a resolução do display. Essa atividade é uma excelente oportunidade para entender como gráficos são manipulados em dispositivos embarcados.
 
 Para representar um bitmap monocromático no Display OLED, precisamos traduzir a imagem para uma matriz de bytes. Cada byte da matriz representa uma coluna de 8 pixels (uma "página" vertical) no display, seguindo o modelo de mapeamento do controlador SSD1306. Este formato compacto e eficiente permite que gráficos sejam exibidos diretamente no hardware.
 
@@ -344,8 +392,8 @@ void ssd1306_draw_bitmap(ssd1306_t *ssd, const uint8_t *bitmap) {
 #include "inc/ssd1306.h"
 #include "hardware/i2c.h"
 
-const uint I2C_SDA = 14;
-const uint I2C_SCL = 15;
+const uint I2C_SDA = 6;
+const uint I2C_SCL = 7;
 
 int main()
 {
@@ -400,7 +448,7 @@ restart:
 
 **Passo 3:** Como Testar
 
-- Carregue o Programa: Compile o código e envie para a BitDogLab usando seu ambiente de desenvolvimento.
+- Carregue o Programa: Compile o código e envie para a Placa-PCEIoT-Board-V1.1.0 usando seu ambiente de desenvolvimento.
 - Verifique a Imagem: A imagem definida no bitmap_128x64 será exibida no Display OLED.
 
 ### Dicas Adicionais:
@@ -415,4 +463,4 @@ restart:
 ### Exploração Adicional:
 
 - Combine a exibição de bitmaps com outras funções, como desenhar texto ou linhas, para criar interfaces gráficas dinâmicas.
-- Com isso, você terá uma forma eficiente de exibir bitmaps no Display OLED da BitDogLab usando C!
+- Com isso, você terá uma forma eficiente de exibir bitmaps no Display OLED da Placa-PCEIoT-Board-V1.1.0 usando C!
