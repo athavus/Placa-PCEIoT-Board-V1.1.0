@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="display_oled/images/VirtusCC.png" alt="Virtus">
+</p>
+
+
 # Bibliotecas para Placa PCEIoT-Board-V1.1.0
 
 Este repositório contém três bibliotecas desenvolvidas para a placa **PCEIoT-Board-V1.1.0**, com o objetivo de facilitar o uso de seus principais periféricos. O projeto foi desenvolvido durante a **Capacitação em Sistemas Embarcados do VIRTUS-CC**, como parte do aprendizado prático em integração de hardware e software embarcado.
