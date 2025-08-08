@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="display_oled/images/VirtusCC.png" alt="Virtus">
+  <img src="pressao/assets/VirtusCC.png" alt="Virtus">
 </p>
 
 
